@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Camera, ClipboardPaste, Copy, Mic, MicOff, Plus, Trash2 } from 'lucide-react';
+import { Camera, ClipboardPaste, Copy, FolderOpen, Mic, MicOff, Plus, Trash2 } from 'lucide-react';
 import { formatMoney, parseVoiceMoney, useFinance } from '../hooks/useFinance';
 import { useSpeechRecognition } from '../hooks/useSpeech';
 import { isNativeApp, pickReceiptPhoto } from '../lib/native';
@@ -10,7 +10,8 @@ export function FinanceView() {
   const { listening, transcript, supported, start, stop, setTranscript } = useSpeechRecognition();
   const [message, setMessage] = useState('');
   const [backupText, setBackupText] = useState('');
-  const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -40,7 +41,15 @@ export function FinanceView() {
   const onPhoto = (file?: File | null) => {
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => applyPhoto(String(reader.result || ''), file.name);
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '');
+      // Guardamos imagen o PDF como adjunto; la vista previa solo aplica a imágenes.
+      if (file.type.startsWith('image/') || file.type === 'application/pdf') {
+        applyPhoto(dataUrl, file.name);
+      } else {
+        setMessage('Usa una imagen o un PDF de la factura.');
+      }
+    };
     reader.readAsDataURL(file);
   };
 
@@ -50,7 +59,11 @@ export function FinanceView() {
       if (dataUrl) applyPhoto(dataUrl, 'cámara');
       return;
     }
-    fileRef.current?.click();
+    cameraRef.current?.click();
+  };
+
+  const openGalleryOrFiles = () => {
+    galleryRef.current?.click();
   };
 
   const save = () => {
@@ -200,13 +213,24 @@ export function FinanceView() {
             )}
             <button className="btn btn-ghost" onClick={() => void openCamera()}>
               <Camera size={18} />
-              Foto de recibo
+              Tomar foto
+            </button>
+            <button className="btn btn-ghost" onClick={openGalleryOrFiles}>
+              <FolderOpen size={18} />
+              Archivo o galería
             </button>
             <input
-              ref={fileRef}
+              ref={cameraRef}
               type="file"
               accept="image/*"
               capture="environment"
+              hidden
+              onChange={(e) => onPhoto(e.target.files?.[0])}
+            />
+            <input
+              ref={galleryRef}
+              type="file"
+              accept="image/*,.pdf,application/pdf"
               hidden
               onChange={(e) => onPhoto(e.target.files?.[0])}
             />
@@ -265,8 +289,11 @@ export function FinanceView() {
                 onChange={(e) => setDraft((d) => ({ ...d, date: e.target.value }))}
               />
             </div>
-            {draft.photoDataUrl && (
+            {draft.photoDataUrl?.startsWith('data:image') && (
               <img className="photo-preview" src={draft.photoDataUrl} alt="Recibo adjunto" />
+            )}
+            {draft.photoDataUrl?.startsWith('data:application/pdf') && (
+              <p className="muted">PDF de factura adjunto.</p>
             )}
           </div>
 
