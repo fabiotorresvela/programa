@@ -34,7 +34,13 @@ export function makeBackup(entries: MoneyEntry[]): FinanceBackup {
 }
 
 export function parseBackup(raw: string): MoneyEntry[] {
-  const parsed = JSON.parse(raw) as FinanceBackup | MoneyEntry[];
+  const cleaned = raw
+    .trim()
+    .replace(/^\uFEFF/, '')
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+  const parsed = JSON.parse(cleaned) as FinanceBackup | MoneyEntry[];
   if (Array.isArray(parsed)) return parsed;
   if (parsed && typeof parsed === 'object' && Array.isArray(parsed.entries)) {
     return parsed.entries;

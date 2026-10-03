@@ -1,7 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { Camera, ClipboardPaste, Copy, FolderOpen, Mic, MicOff, Plus, Trash2 } from 'lucide-react';
+import {
+  Camera,
+  Download,
+  FolderOpen,
+  Mic,
+  MicOff,
+  Plus,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import { formatMoney, parseVoiceMoney, useFinance } from '../hooks/useFinance';
 import { useSpeechRecognition } from '../hooks/useSpeech';
+import { saveTextAsFile } from '../lib/backupFiles';
 import { isNativeApp, pickReceiptPhoto } from '../lib/native';
 
 export function FinanceView() {
@@ -72,25 +82,36 @@ export function FinanceView() {
     setTranscript('');
   };
 
-  const copyBackup = async () => {
+  const saveBackupFile = async () => {
+    if (!entries.length) {
+      setMessage('No hay movimientos para guardar todavía.');
+      return;
+    }
     const text = exportText();
     setBackupText(text);
-    try {
-      await navigator.clipboard.writeText(text);
-      setMessage(`Respaldo copiado (${entries.length} movimientos). Pégalo en Safari.`);
-    } catch {
-      setMessage('No se pudo copiar solo. Selecciona el texto del cuadro y cópialo a mano.');
+    const result = await saveTextAsFile(text);
+    if (result === 'shared') {
+      setMessage(
+        'Elige “Guardar en Archivos” (o Enviar a…). Luego ábrelo en la app de la pantalla de inicio y toca Cargar archivo.',
+      );
+    } else if (result === 'downloaded') {
+      setMessage('Archivo de respaldo creado. Guárdalo en Archivos y cárgalo en la otra app.');
+    } else {
+      setMessage('Cancelaste el guardado. Vuelve a tocar Guardar archivo cuando quieras.');
     }
   };
 
-  const pasteAndImport = async () => {
+  const importFromTextBox = () => {
+    if (!backupText.trim()) {
+      setMessage('Primero pega el respaldo en el cuadro, o usa Cargar archivo.');
+      return;
+    }
     try {
-      const text = backupText.trim() || (await navigator.clipboard.readText());
-      const count = importFromText(text, 'replace');
+      const count = importFromText(backupText, 'replace');
       setBackupText('');
-      setMessage(`Importados ${count} movimientos. Ya quedan guardados en este navegador.`);
+      setMessage(`Listo: se cargaron ${count} movimientos en esta app.`);
     } catch {
-      setMessage('Pega el respaldo en el cuadro de abajo y vuelve a tocar Importar.');
+      setMessage('Ese texto no es un respaldo válido. Mejor usa el archivo .json.');
     }
   };
 
@@ -100,11 +121,13 @@ export function FinanceView() {
     reader.onload = () => {
       try {
         const count = importFromText(String(reader.result || ''), 'replace');
-        setMessage(`Importados ${count} movimientos desde archivo.`);
+        setBackupText('');
+        setMessage(`Listo: se cargaron ${count} movimientos desde “${file.name}”.`);
       } catch {
-        setMessage('Ese archivo no es un respaldo válido de Programa.');
+        setMessage('Ese archivo no es un respaldo válido de Programa (.json).');
       }
     };
+    reader.onerror = () => setMessage('No pude leer ese archivo. Prueba de nuevo.');
     reader.readAsText(file);
   };
 
@@ -120,42 +143,60 @@ export function FinanceView() {
         </div>
       </div>
 
-      <div className="panel" style={{ marginBottom: '1rem' }}>
-        <h3>Pasar datos entre Brave y Safari</h3>
+      <div className="panel backup-panel" style={{ marginBottom: '1rem' }}>
+        <h3>Guardar y pasar mis datos</h3>
         <p className="muted" style={{ marginTop: 0 }}>
-          Cada navegador guarda aparte. Para no perder lo que ya metiste: en Brave toca
-          <strong> Copiar respaldo</strong>, luego en Safari pega e <strong>Importar</strong>.
-          Después usa solo Safari (o el icono de pantalla de inicio).
+          En el iPhone, copiar el código casi no funciona entre Brave y la app de inicio. Usa
+          <strong> archivo</strong>:
         </p>
-        <div className="controls" style={{ marginTop: '0.75rem' }}>
-          <button className="btn btn-primary" onClick={() => void copyBackup()}>
-            <Copy size={18} />
-            Copiar respaldo
-          </button>
-          <button className="btn btn-ghost" onClick={() => void pasteAndImport()}>
-            <ClipboardPaste size={18} />
-            Importar respaldo
+        <ol className="backup-steps">
+          <li>
+            En Brave: toca <strong>Guardar archivo de respaldo</strong> → Guarda en Archivos.
+          </li>
+          <li>
+            En la app de la pantalla de inicio: toca <strong>Cargar archivo de respaldo</strong> y
+            elige ese archivo.
+          </li>
+        </ol>
+        <div className="controls" style={{ marginTop: '0.85rem' }}>
+          <button className="btn btn-primary" onClick={() => void saveBackupFile()}>
+            <Download size={18} />
+            Guardar archivo de respaldo
           </button>
           <button className="btn btn-ghost" onClick={() => importFileRef.current?.click()}>
-            Elegir archivo
+            <Upload size={18} />
+            Cargar archivo de respaldo
           </button>
           <input
             ref={importFileRef}
             type="file"
-            accept="application/json,.json,text/plain"
+            accept="application/json,.json,text/plain,.txt"
             hidden
-            onChange={(e) => onImportFile(e.target.files?.[0])}
+            onChange={(e) => {
+              onImportFile(e.target.files?.[0]);
+              e.currentTarget.value = '';
+            }}
           />
         </div>
-        <div className="field" style={{ marginTop: '0.75rem' }}>
-          <label>Respaldo (copiar / pegar)</label>
-          <textarea
-            rows={4}
-            value={backupText}
-            onChange={(e) => setBackupText(e.target.value)}
-            placeholder="Aquí aparece o pegas el respaldo JSON"
-          />
-        </div>
+        <details className="backup-advanced">
+          <summary>Opción avanzada: pegar texto</summary>
+          <div className="field" style={{ marginTop: '0.75rem' }}>
+            <label>Texto del respaldo</label>
+            <textarea
+              rows={4}
+              value={backupText}
+              onChange={(e) => setBackupText(e.target.value)}
+              placeholder="Solo si pegaste el JSON a mano"
+            />
+          </div>
+          <button
+            className="btn btn-ghost"
+            style={{ marginTop: '0.6rem' }}
+            onClick={importFromTextBox}
+          >
+            Importar texto pegado
+          </button>
+        </details>
       </div>
 
       <div className="kpi-grid" style={{ marginBottom: '1rem' }}>

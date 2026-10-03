@@ -687,6 +687,31 @@ a {
   }
 }
 
+.backup-panel {
+  border-color: rgba(232, 184, 109, 0.35);
+  background: linear-gradient(160deg, rgba(232, 184, 109, 0.1), rgba(22, 40, 32, 0.9));
+}
+
+.backup-steps {
+  margin: 0.55rem 0 0;
+  padding-left: 1.15rem;
+  color: var(--muted);
+  display: grid;
+  gap: 0.35rem;
+  line-height: 1.4;
+}
+
+.backup-advanced {
+  margin-top: 0.9rem;
+  color: var(--muted);
+}
+
+.backup-advanced summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--ink);
+}
+
 .spin {
   animation: spin 0.9s linear infinite;
 }
