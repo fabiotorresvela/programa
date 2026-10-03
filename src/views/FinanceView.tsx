@@ -15,14 +15,28 @@ import { saveTextAsFile } from '../lib/backupFiles';
 import { isNativeApp, pickReceiptPhoto } from '../lib/native';
 
 export function FinanceView() {
-  const { entries, draft, setDraft, addFromDraft, remove, summary, exportText, importFromText } =
-    useFinance();
+  const {
+    entries,
+    ledgerEntries,
+    ledger,
+    setLedger,
+    draft,
+    setDraft,
+    addFromDraft,
+    remove,
+    summary,
+    personalSummary,
+    empresaSummary,
+    exportText,
+    importFromText,
+  } = useFinance();
   const { listening, transcript, supported, start, stop, setTranscript } = useSpeechRecognition();
   const [message, setMessage] = useState('');
   const [backupText, setBackupText] = useState('');
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
+  const isEmpresa = ledger === 'empresa';
 
   useEffect(() => {
     if (!transcript) return;
@@ -78,7 +92,11 @@ export function FinanceView() {
 
   const save = () => {
     const ok = addFromDraft();
-    setMessage(ok ? 'Movimiento guardado.' : 'Indica un monto válido.');
+    setMessage(
+      ok
+        ? `Movimiento guardado en ${isEmpresa ? 'Empresa' : 'Personales'}.`
+        : 'Indica un monto válido.',
+    );
     setTranscript('');
   };
 
@@ -135,13 +153,39 @@ export function FinanceView() {
     <div className="section">
       <div className="section-head">
         <div>
-          <h2>Finanzas personales</h2>
+          <h2>Finanzas</h2>
           <p>
-            Dicta un gasto, toma foto de un recibo o registra ingresos y préstamos. El resumen se
-            comporta como el de una empresa pequeña.
+            Separa tu dinero: lo personal y lo de la empresa. Cada sección tiene su propia base,
+            gastos, ingresos y préstamos.
           </p>
         </div>
       </div>
+
+      <div className="ledger-toggle" role="tablist" aria-label="Tipo de finanzas">
+        <button
+          role="tab"
+          aria-selected={!isEmpresa}
+          className={!isEmpresa ? 'active' : ''}
+          onClick={() => setLedger('personal')}
+        >
+          Personales
+          <small>{formatMoney(personalSummary.balance)}</small>
+        </button>
+        <button
+          role="tab"
+          aria-selected={isEmpresa}
+          className={isEmpresa ? 'active' : ''}
+          onClick={() => setLedger('empresa')}
+        >
+          Empresa
+          <small>{formatMoney(empresaSummary.balance)}</small>
+        </button>
+      </div>
+
+      <p className="muted" style={{ margin: '0.75rem 0 1rem' }}>
+        Estás en <strong>{isEmpresa ? 'Empresa' : 'Personales'}</strong>. Lo que registres aquí no se
+        mezcla con la otra sección.
+      </p>
 
       <div className="kpi-grid" style={{ marginBottom: '1rem' }}>
         <div className="kpi income">
@@ -224,7 +268,10 @@ export function FinanceView() {
           {listening && (
             <div className="voice-status">
               <span className="dot" />
-              Escuchando… di por ejemplo: “Gasté 25000 en gasolina”
+              Escuchando… di por ejemplo:{' '}
+              {isEmpresa
+                ? '“Gasto de empresa 80000 en proveedor”'
+                : '“Gasté 25000 en gasolina personal”'}
             </div>
           )}
           {transcript && <p className="muted">Detectado: “{transcript}”</p>}
@@ -293,10 +340,10 @@ export function FinanceView() {
 
         <div className="stack">
           <div className="panel">
-            <h3>Resumen tipo empresa</h3>
+            <h3>{isEmpresa ? 'Resumen de empresa' : 'Resumen personal'}</h3>
             <p className="muted" style={{ marginTop: 0 }}>
-              Ingresos menos gastos = resultado. Los préstamos se llevan aparte como dinero por
-              recuperar.
+              Ingresos menos gastos = resultado de esta sección. Los préstamos se llevan aparte como
+              dinero por recuperar.
             </p>
             <div className="stack" style={{ marginTop: '0.85rem' }}>
               {summary.byCategory.length === 0 ? (
@@ -332,12 +379,14 @@ export function FinanceView() {
           </div>
 
           <div className="panel">
-            <h3>Movimientos</h3>
+            <h3>Movimientos · {isEmpresa ? 'Empresa' : 'Personales'}</h3>
             <div className="entry-list" style={{ marginTop: '0.75rem' }}>
-              {entries.length === 0 && (
-                <p className="empty">Todavía no hay movimientos. Dicta uno o agrégalo a mano.</p>
+              {ledgerEntries.length === 0 && (
+                <p className="empty">
+                  Todavía no hay movimientos en esta sección. Dicta uno o agrégalo a mano.
+                </p>
               )}
-              {entries.map((e) => (
+              {ledgerEntries.map((e) => (
                 <div key={e.id} className="entry">
                   <div>
                     <strong>{e.note}</strong>
@@ -350,7 +399,7 @@ export function FinanceView() {
                       {' · '}
                       {e.date}
                     </div>
-                    {e.photoDataUrl && (
+                    {e.photoDataUrl?.startsWith('data:image') && (
                       <img
                         className="photo-preview"
                         style={{ marginTop: '0.55rem', maxHeight: 100 }}

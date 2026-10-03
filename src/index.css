@@ -711,6 +711,40 @@ a {
   }
 }
 
+.ledger-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0.35rem;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(8, 16, 12, 0.35);
+}
+
+.ledger-toggle button {
+  display: grid;
+  gap: 0.15rem;
+  justify-items: start;
+  padding: 0.8rem 0.95rem;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  color: var(--muted);
+  font-weight: 800;
+  text-align: left;
+}
+
+.ledger-toggle button small {
+  font-weight: 600;
+  font-size: 0.78rem;
+  color: inherit;
+  opacity: 0.85;
+}
+
+.ledger-toggle button.active {
+  background: var(--accent);
+  color: #1a1408;
+}
+
 .backup-panel {
   margin-top: 1rem;
   border-color: rgba(232, 184, 109, 0.28);

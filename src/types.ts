@@ -22,9 +22,12 @@ export type Course = {
 
 export type MoneyKind = 'expense' | 'income' | 'loan';
 
+export type MoneyLedger = 'personal' | 'empresa';
+
 export type MoneyEntry = {
   id: string;
   kind: MoneyKind;
+  ledger: MoneyLedger;
   amount: number;
   note: string;
   category: string;

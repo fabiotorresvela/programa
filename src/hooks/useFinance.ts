@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { MoneyEntry, MoneyKind } from '../types';
+import type { MoneyEntry, MoneyKind, MoneyLedger } from '../types';
 import { loadEntries, makeBackup, parseBackup, saveEntries, uid } from '../lib/storage';
 
 export type DraftEntry = {
   kind: MoneyKind;
+  ledger: MoneyLedger;
   amount: string;
   note: string;
   category: string;
@@ -12,14 +13,38 @@ export type DraftEntry = {
   photoDataUrl?: string;
 };
 
-const emptyDraft = (): DraftEntry => ({
+const emptyDraft = (ledger: MoneyLedger = 'personal'): DraftEntry => ({
   kind: 'expense',
+  ledger,
   amount: '',
   note: '',
   category: 'General',
   person: '',
   date: new Date().toISOString().slice(0, 10),
 });
+
+function summarize(entries: MoneyEntry[]) {
+  const income = entries.filter((e) => e.kind === 'income').reduce((s, e) => s + e.amount, 0);
+  const expenses = entries.filter((e) => e.kind === 'expense').reduce((s, e) => s + e.amount, 0);
+  const loans = entries.filter((e) => e.kind === 'loan').reduce((s, e) => s + e.amount, 0);
+  const byCategory = new Map<string, number>();
+  for (const e of entries.filter((x) => x.kind === 'expense')) {
+    byCategory.set(e.category, (byCategory.get(e.category) ?? 0) + e.amount);
+  }
+  const loanPeople = new Map<string, number>();
+  for (const e of entries.filter((x) => x.kind === 'loan')) {
+    const name = e.person || 'Sin nombre';
+    loanPeople.set(name, (loanPeople.get(name) ?? 0) + e.amount);
+  }
+  return {
+    income,
+    expenses,
+    loans,
+    balance: income - expenses,
+    byCategory: [...byCategory.entries()].sort((a, b) => b[1] - a[1]),
+    loanPeople: [...loanPeople.entries()].sort((a, b) => b[1] - a[1]),
+  };
+}
 
 /** Interpreta frases simples en español: "gasté 25000 en gasolina", "ingreso 800000 salario", "presté 100000 a Carlos" */
 export function parseVoiceMoney(text: string): Partial<DraftEntry> {
@@ -33,19 +58,32 @@ export function parseVoiceMoney(text: string): Partial<DraftEntry> {
   else if (/ingreso|cobre|recibi|ganancia|sueldo|salario|me pagaron/.test(lower)) kind = 'income';
   else if (/gaste|pague|compra|salida|gasto/.test(lower)) kind = 'expense';
 
+  let ledger: MoneyLedger | undefined;
+  if (/empresa|negocio|compania|compañia|oficina|factura de la empresa/.test(lower)) {
+    ledger = 'empresa';
+  } else if (/personal|mio|mío|casa|familia/.test(lower)) {
+    ledger = 'personal';
+  }
+
   let category = 'General';
   if (/gasolina|uber|taxi|transporte|peaje/.test(lower)) category = 'Transporte';
   else if (/comida|almuerzo|cena|cafe|mercado/.test(lower)) category = 'Comida';
   else if (/arriendo|renta|servicios|luz|agua|internet/.test(lower)) category = 'Hogar';
   else if (/salario|sueldo|nomina|honorario/.test(lower)) category = 'Salario';
-  else if (/cliente|venta|comision/.test(lower)) category = 'Ventas';
+  else if (/cliente|venta|comision|proveedor|insumo|inventario/.test(lower)) category = 'Ventas';
+  else if (/nomina|emplead|proveedor|publicidad|publicidad|herramienta/.test(lower)) {
+    category = 'Operación';
+  }
 
   let person = '';
-  const personMatch = text.match(/(?:a|para)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚáéíóúñÑ]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚáéíóúñÑ]*)?)/i);
+  const personMatch = text.match(
+    /(?:a|para)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚáéíóúñÑ]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚáéíóúñÑ]*)?)/i,
+  );
   if (kind === 'loan' && personMatch) person = personMatch[1];
 
   return {
     kind,
+    ...(ledger ? { ledger } : {}),
     amount,
     note: text.trim(),
     category,
@@ -55,11 +93,21 @@ export function parseVoiceMoney(text: string): Partial<DraftEntry> {
 
 export function useFinance() {
   const [entries, setEntries] = useState<MoneyEntry[]>(() => loadEntries());
-  const [draft, setDraft] = useState<DraftEntry>(emptyDraft);
+  const [ledger, setLedger] = useState<MoneyLedger>('personal');
+  const [draft, setDraft] = useState<DraftEntry>(() => emptyDraft('personal'));
 
   useEffect(() => {
     saveEntries(entries);
   }, [entries]);
+
+  useEffect(() => {
+    setDraft((prev) => ({ ...prev, ledger }));
+  }, [ledger]);
+
+  const ledgerEntries = useMemo(
+    () => entries.filter((e) => (e.ledger || 'personal') === ledger),
+    [entries, ledger],
+  );
 
   const addFromDraft = () => {
     const amount = Number(draft.amount);
@@ -67,6 +115,7 @@ export function useFinance() {
     const entry: MoneyEntry = {
       id: uid(),
       kind: draft.kind,
+      ledger: draft.ledger || ledger,
       amount,
       note: draft.note || draft.category,
       category: draft.category || 'General',
@@ -76,7 +125,7 @@ export function useFinance() {
       createdAt: new Date().toISOString(),
     };
     setEntries((prev) => [entry, ...prev]);
-    setDraft(emptyDraft());
+    setDraft(emptyDraft(entry.ledger));
     return true;
   };
 
@@ -104,39 +153,31 @@ export function useFinance() {
     return incoming.length;
   };
 
-  const summary = useMemo(() => {
-    const income = entries.filter((e) => e.kind === 'income').reduce((s, e) => s + e.amount, 0);
-    const expenses = entries.filter((e) => e.kind === 'expense').reduce((s, e) => s + e.amount, 0);
-    const loans = entries.filter((e) => e.kind === 'loan').reduce((s, e) => s + e.amount, 0);
-    const byCategory = new Map<string, number>();
-    for (const e of entries.filter((x) => x.kind === 'expense')) {
-      byCategory.set(e.category, (byCategory.get(e.category) ?? 0) + e.amount);
-    }
-    const loanPeople = new Map<string, number>();
-    for (const e of entries.filter((x) => x.kind === 'loan')) {
-      const name = e.person || 'Sin nombre';
-      loanPeople.set(name, (loanPeople.get(name) ?? 0) + e.amount);
-    }
-    return {
-      income,
-      expenses,
-      loans,
-      balance: income - expenses,
-      byCategory: [...byCategory.entries()].sort((a, b) => b[1] - a[1]),
-      loanPeople: [...loanPeople.entries()].sort((a, b) => b[1] - a[1]),
-    };
-  }, [entries]);
+  const summary = useMemo(() => summarize(ledgerEntries), [ledgerEntries]);
+  const personalSummary = useMemo(
+    () => summarize(entries.filter((e) => (e.ledger || 'personal') === 'personal')),
+    [entries],
+  );
+  const empresaSummary = useMemo(
+    () => summarize(entries.filter((e) => e.ledger === 'empresa')),
+    [entries],
+  );
 
   return {
     entries,
+    ledgerEntries,
+    ledger,
+    setLedger,
     draft,
     setDraft,
     addFromDraft,
     remove,
     summary,
+    personalSummary,
+    empresaSummary,
     exportText,
     importFromText,
-    emptyDraft: () => setDraft(emptyDraft()),
+    emptyDraft: () => setDraft(emptyDraft(ledger)),
   };
 }
 
