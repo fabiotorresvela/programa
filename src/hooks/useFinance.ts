@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { MoneyEntry, MoneyKind } from '../types';
-import { loadEntries, saveEntries, uid } from '../lib/storage';
+import { loadEntries, makeBackup, parseBackup, saveEntries, uid } from '../lib/storage';
 
 export type DraftEntry = {
   kind: MoneyKind;
@@ -82,6 +82,28 @@ export function useFinance() {
 
   const remove = (id: string) => setEntries((prev) => prev.filter((e) => e.id !== id));
 
+  const exportText = () => JSON.stringify(makeBackup(entries), null, 2);
+
+  const importFromText = (raw: string, mode: 'replace' | 'merge' = 'replace') => {
+    const incoming = parseBackup(raw);
+    if (mode === 'replace') {
+      setEntries(incoming);
+      return incoming.length;
+    }
+    setEntries((prev) => {
+      const seen = new Set(prev.map((e) => e.id));
+      const merged = [...prev];
+      for (const entry of incoming) {
+        if (!seen.has(entry.id)) {
+          merged.push(entry);
+          seen.add(entry.id);
+        }
+      }
+      return merged.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+    });
+    return incoming.length;
+  };
+
   const summary = useMemo(() => {
     const income = entries.filter((e) => e.kind === 'income').reduce((s, e) => s + e.amount, 0);
     const expenses = entries.filter((e) => e.kind === 'expense').reduce((s, e) => s + e.amount, 0);
@@ -105,7 +127,17 @@ export function useFinance() {
     };
   }, [entries]);
 
-  return { entries, draft, setDraft, addFromDraft, remove, summary, emptyDraft: () => setDraft(emptyDraft()) };
+  return {
+    entries,
+    draft,
+    setDraft,
+    addFromDraft,
+    remove,
+    summary,
+    exportText,
+    importFromText,
+    emptyDraft: () => setDraft(emptyDraft()),
+  };
 }
 
 export function formatMoney(value: number) {

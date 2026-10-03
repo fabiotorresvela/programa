@@ -2,6 +2,13 @@ import type { MoneyEntry } from '../types';
 
 const KEY = 'programa.finance.v1';
 
+export type FinanceBackup = {
+  app: 'programa';
+  version: 1;
+  exportedAt: string;
+  entries: MoneyEntry[];
+};
+
 export function loadEntries(): MoneyEntry[] {
   try {
     const raw = localStorage.getItem(KEY);
@@ -15,6 +22,24 @@ export function loadEntries(): MoneyEntry[] {
 
 export function saveEntries(entries: MoneyEntry[]) {
   localStorage.setItem(KEY, JSON.stringify(entries));
+}
+
+export function makeBackup(entries: MoneyEntry[]): FinanceBackup {
+  return {
+    app: 'programa',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    entries,
+  };
+}
+
+export function parseBackup(raw: string): MoneyEntry[] {
+  const parsed = JSON.parse(raw) as FinanceBackup | MoneyEntry[];
+  if (Array.isArray(parsed)) return parsed;
+  if (parsed && typeof parsed === 'object' && Array.isArray(parsed.entries)) {
+    return parsed.entries;
+  }
+  throw new Error('Formato de respaldo inválido');
 }
 
 export function uid() {

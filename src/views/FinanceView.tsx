@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { Camera, Mic, MicOff, Plus, Trash2 } from 'lucide-react';
+import { Camera, ClipboardPaste, Copy, Mic, MicOff, Plus, Trash2 } from 'lucide-react';
 import { formatMoney, parseVoiceMoney, useFinance } from '../hooks/useFinance';
 import { useSpeechRecognition } from '../hooks/useSpeech';
 import { isNativeApp, pickReceiptPhoto } from '../lib/native';
 
 export function FinanceView() {
-  const { entries, draft, setDraft, addFromDraft, remove, summary } = useFinance();
+  const { entries, draft, setDraft, addFromDraft, remove, summary, exportText, importFromText } =
+    useFinance();
   const { listening, transcript, supported, start, stop, setTranscript } = useSpeechRecognition();
   const [message, setMessage] = useState('');
+  const [backupText, setBackupText] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!transcript) return;
@@ -56,6 +59,42 @@ export function FinanceView() {
     setTranscript('');
   };
 
+  const copyBackup = async () => {
+    const text = exportText();
+    setBackupText(text);
+    try {
+      await navigator.clipboard.writeText(text);
+      setMessage(`Respaldo copiado (${entries.length} movimientos). Pégalo en Safari.`);
+    } catch {
+      setMessage('No se pudo copiar solo. Selecciona el texto del cuadro y cópialo a mano.');
+    }
+  };
+
+  const pasteAndImport = async () => {
+    try {
+      const text = backupText.trim() || (await navigator.clipboard.readText());
+      const count = importFromText(text, 'replace');
+      setBackupText('');
+      setMessage(`Importados ${count} movimientos. Ya quedan guardados en este navegador.`);
+    } catch {
+      setMessage('Pega el respaldo en el cuadro de abajo y vuelve a tocar Importar.');
+    }
+  };
+
+  const onImportFile = (file?: File | null) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const count = importFromText(String(reader.result || ''), 'replace');
+        setMessage(`Importados ${count} movimientos desde archivo.`);
+      } catch {
+        setMessage('Ese archivo no es un respaldo válido de Programa.');
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className="section">
       <div className="section-head">
@@ -65,6 +104,44 @@ export function FinanceView() {
             Dicta un gasto, toma foto de un recibo o registra ingresos y préstamos. El resumen se
             comporta como el de una empresa pequeña.
           </p>
+        </div>
+      </div>
+
+      <div className="panel" style={{ marginBottom: '1rem' }}>
+        <h3>Pasar datos entre Brave y Safari</h3>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Cada navegador guarda aparte. Para no perder lo que ya metiste: en Brave toca
+          <strong> Copiar respaldo</strong>, luego en Safari pega e <strong>Importar</strong>.
+          Después usa solo Safari (o el icono de pantalla de inicio).
+        </p>
+        <div className="controls" style={{ marginTop: '0.75rem' }}>
+          <button className="btn btn-primary" onClick={() => void copyBackup()}>
+            <Copy size={18} />
+            Copiar respaldo
+          </button>
+          <button className="btn btn-ghost" onClick={() => void pasteAndImport()}>
+            <ClipboardPaste size={18} />
+            Importar respaldo
+          </button>
+          <button className="btn btn-ghost" onClick={() => importFileRef.current?.click()}>
+            Elegir archivo
+          </button>
+          <input
+            ref={importFileRef}
+            type="file"
+            accept="application/json,.json,text/plain"
+            hidden
+            onChange={(e) => onImportFile(e.target.files?.[0])}
+          />
+        </div>
+        <div className="field" style={{ marginTop: '0.75rem' }}>
+          <label>Respaldo (copiar / pegar)</label>
+          <textarea
+            rows={4}
+            value={backupText}
+            onChange={(e) => setBackupText(e.target.value)}
+            placeholder="Aquí aparece o pegas el respaldo JSON"
+          />
         </div>
       </div>
 
