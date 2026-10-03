@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Headphones, Home, Wallet } from 'lucide-react';
+import { Headphones, Home, RefreshCw, Wallet } from 'lucide-react';
 import type { View } from './types';
 import { HomeView } from './views/HomeView';
 import { AudioView } from './views/AudioView';
 import { FinanceView } from './views/FinanceView';
+import { refreshApp } from './lib/appRefresh';
 import { initNativeShell, platformLabel } from './lib/native';
 
 function BrandMark() {
@@ -25,11 +26,18 @@ function BrandMark() {
 export default function App() {
   const [view, setView] = useState<View>('home');
   const [platform, setPlatform] = useState('Web');
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     void initNativeShell();
     setPlatform(platformLabel());
   }, []);
+
+  const onRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    await refreshApp();
+  };
 
   return (
     <>
@@ -42,20 +50,34 @@ export default function App() {
               <div className="brand-tag">Audio + finanzas · {platform}</div>
             </div>
           </button>
-          <nav className="nav-pills desktop-nav" aria-label="Secciones">
-            <button className={view === 'home' ? 'active' : ''} onClick={() => setView('home')}>
-              <Home size={15} style={{ marginRight: 4, verticalAlign: -2 }} />
-              Inicio
+          <div className="topbar-actions">
+            <button
+              className={`refresh-btn ${refreshing ? 'spinning' : ''}`}
+              onClick={() => void onRefresh()}
+              aria-label="Actualizar aplicación"
+              title="Actualizar app"
+            >
+              <RefreshCw size={18} />
+              <span>Actualizar</span>
             </button>
-            <button className={view === 'audio' ? 'active' : ''} onClick={() => setView('audio')}>
-              <Headphones size={15} style={{ marginRight: 4, verticalAlign: -2 }} />
-              Audio
-            </button>
-            <button className={view === 'finance' ? 'active' : ''} onClick={() => setView('finance')}>
-              <Wallet size={15} style={{ marginRight: 4, verticalAlign: -2 }} />
-              Finanzas
-            </button>
-          </nav>
+            <nav className="nav-pills desktop-nav" aria-label="Secciones">
+              <button className={view === 'home' ? 'active' : ''} onClick={() => setView('home')}>
+                <Home size={15} style={{ marginRight: 4, verticalAlign: -2 }} />
+                Inicio
+              </button>
+              <button className={view === 'audio' ? 'active' : ''} onClick={() => setView('audio')}>
+                <Headphones size={15} style={{ marginRight: 4, verticalAlign: -2 }} />
+                Audio
+              </button>
+              <button
+                className={view === 'finance' ? 'active' : ''}
+                onClick={() => setView('finance')}
+              >
+                <Wallet size={15} style={{ marginRight: 4, verticalAlign: -2 }} />
+                Finanzas
+              </button>
+            </nav>
+          </div>
         </header>
 
         <main className="app-main">
