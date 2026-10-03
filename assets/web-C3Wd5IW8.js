@@ -1,1 +1,0 @@
-import{n as e}from"./index-BADi_Pod.js";var t=class extends e{async show(e){}async hide(e){}};export{t as SplashScreenWeb};
