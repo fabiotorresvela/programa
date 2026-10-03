@@ -3,7 +3,8 @@ import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
-  base: './',
+  // './' for Capacitor/native; '/programa/' when deploying to GitHub Pages
+  base: process.env.PAGES === '1' ? '/programa/' : './',
   plugins: [
     react(),
     VitePWA({
