@@ -143,62 +143,6 @@ export function FinanceView() {
         </div>
       </div>
 
-      <div className="panel backup-panel" style={{ marginBottom: '1rem' }}>
-        <h3>Guardar y pasar mis datos</h3>
-        <p className="muted" style={{ marginTop: 0 }}>
-          En el iPhone, copiar el código casi no funciona entre Brave y la app de inicio. Usa
-          <strong> archivo</strong>:
-        </p>
-        <ol className="backup-steps">
-          <li>
-            En Brave: toca <strong>Guardar archivo de respaldo</strong> → Guarda en Archivos.
-          </li>
-          <li>
-            En la app de la pantalla de inicio: toca <strong>Cargar archivo de respaldo</strong> y
-            elige ese archivo.
-          </li>
-        </ol>
-        <div className="controls" style={{ marginTop: '0.85rem' }}>
-          <button className="btn btn-primary" onClick={() => void saveBackupFile()}>
-            <Download size={18} />
-            Guardar archivo de respaldo
-          </button>
-          <button className="btn btn-ghost" onClick={() => importFileRef.current?.click()}>
-            <Upload size={18} />
-            Cargar archivo de respaldo
-          </button>
-          <input
-            ref={importFileRef}
-            type="file"
-            accept="application/json,.json,text/plain,.txt"
-            hidden
-            onChange={(e) => {
-              onImportFile(e.target.files?.[0]);
-              e.currentTarget.value = '';
-            }}
-          />
-        </div>
-        <details className="backup-advanced">
-          <summary>Opción avanzada: pegar texto</summary>
-          <div className="field" style={{ marginTop: '0.75rem' }}>
-            <label>Texto del respaldo</label>
-            <textarea
-              rows={4}
-              value={backupText}
-              onChange={(e) => setBackupText(e.target.value)}
-              placeholder="Solo si pegaste el JSON a mano"
-            />
-          </div>
-          <button
-            className="btn btn-ghost"
-            style={{ marginTop: '0.6rem' }}
-            onClick={importFromTextBox}
-          >
-            Importar texto pegado
-          </button>
-        </details>
-      </div>
-
       <div className="kpi-grid" style={{ marginBottom: '1rem' }}>
         <div className="kpi income">
           <span>Ingresos</span>
@@ -432,6 +376,46 @@ export function FinanceView() {
           </div>
         </div>
       </div>
+
+      <details className="panel backup-panel backup-collapsed">
+        <summary>Respaldo de datos (guardar / cargar archivo)</summary>
+        <p className="muted" style={{ marginTop: '0.75rem' }}>
+          Úsalo solo cuando quieras pasar o recuperar tus movimientos con un archivo.
+        </p>
+        <div className="controls" style={{ marginTop: '0.75rem' }}>
+          <button className="btn btn-primary" onClick={() => void saveBackupFile()}>
+            <Download size={18} />
+            Guardar archivo de respaldo
+          </button>
+          <button className="btn btn-ghost" onClick={() => importFileRef.current?.click()}>
+            <Upload size={18} />
+            Cargar archivo de respaldo
+          </button>
+          <input
+            ref={importFileRef}
+            type="file"
+            accept="application/json,.json,text/plain,.txt"
+            hidden
+            onChange={(e) => {
+              onImportFile(e.target.files?.[0]);
+              e.currentTarget.value = '';
+            }}
+          />
+        </div>
+        <div className="field" style={{ marginTop: '0.75rem' }}>
+          <label>Pegar texto (opcional)</label>
+          <textarea
+            rows={3}
+            value={backupText}
+            onChange={(e) => setBackupText(e.target.value)}
+            placeholder="Solo si pegaste el JSON a mano"
+          />
+        </div>
+        <button className="btn btn-ghost" style={{ marginTop: '0.6rem' }} onClick={importFromTextBox}>
+          Importar texto pegado
+        </button>
+        {message && <p className="muted" style={{ marginTop: '0.65rem' }}>{message}</p>}
+      </details>
     </div>
   );
 }

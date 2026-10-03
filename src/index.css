@@ -688,28 +688,37 @@ a {
 }
 
 .backup-panel {
-  border-color: rgba(232, 184, 109, 0.35);
-  background: linear-gradient(160deg, rgba(232, 184, 109, 0.1), rgba(22, 40, 32, 0.9));
+  margin-top: 1rem;
+  border-color: rgba(232, 184, 109, 0.28);
+  background: rgba(22, 40, 32, 0.72);
 }
 
-.backup-steps {
-  margin: 0.55rem 0 0;
-  padding-left: 1.15rem;
-  color: var(--muted);
-  display: grid;
-  gap: 0.35rem;
-  line-height: 1.4;
-}
-
-.backup-advanced {
-  margin-top: 0.9rem;
-  color: var(--muted);
-}
-
-.backup-advanced summary {
+.backup-collapsed summary {
   cursor: pointer;
+  list-style: none;
+  font-family: var(--font-display);
   font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.backup-collapsed summary::-webkit-details-marker {
+  display: none;
+}
+
+.backup-collapsed summary::after {
+  content: '+';
+  color: var(--accent);
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.backup-collapsed[open] summary::after {
+  content: '−';
 }
 
 .spin {
