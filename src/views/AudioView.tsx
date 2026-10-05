@@ -79,7 +79,7 @@ export function AudioView() {
       return;
     }
     setBusy(true);
-    setStatus('Buscando información y armando el audio resumido…');
+    setStatus('Buscando los mejores referentes del tema y armando el resumen escuchable…');
     stop();
     try {
       const created = await buildCourseFromQuery(query.trim());
@@ -132,8 +132,8 @@ export function AudioView() {
         <div>
           <h2>Audio de práctica</h2>
           <p>
-            Busca un tema, libro o autor, o sube un PDF. Programa lo parte en resúmenes para
-            escuchar (ideal en trayectos de 30–60 minutos).
+            Escribe un tema y Programa busca referentes de alto nivel, arma el resumen y lo deja
+            listo para escuchar en la ruta. También puedes subir un PDF.
           </p>
         </div>
       </div>
@@ -142,11 +142,11 @@ export function AudioView() {
         <h3>Crear audio nuevo</h3>
         <div className="form-grid" style={{ marginTop: '0.75rem' }}>
           <div className="field">
-            <label>Tema, libro o autor</label>
+            <label>Tema, libro o área a dominar</label>
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Ej. La biblia del vendedor, Dale Carnegie, prospección"
+              placeholder="Ej. cierre de ventas, liderazgo, prospección, negociación"
               disabled={busy}
             />
           </div>
@@ -154,7 +154,7 @@ export function AudioView() {
         <div className="controls" style={{ marginTop: '0.75rem' }}>
           <button className="btn btn-primary" disabled={busy} onClick={() => void createFromQuery()}>
             {busy ? <Loader2 size={18} className="spin" /> : <Search size={18} />}
-            Buscar y resumir
+            Buscar mejores y resumir
           </button>
           <button
             className="btn btn-ghost"
@@ -174,7 +174,8 @@ export function AudioView() {
         </div>
         {status && <p className="muted" style={{ marginTop: '0.75rem' }}>{status}</p>}
         <p className="muted" style={{ marginTop: '0.5rem', fontSize: '0.82rem' }}>
-          Usa resúmenes educativos (Wikipedia/PDF propio). No descarga audiolibros con copyright.
+          Prioriza principios y referentes de alto nivel (Wikipedia ES/EN + catálogo de libros). No
+          descarga audiolibros con copyright.
         </p>
       </div>
 

@@ -1,37 +1,19 @@
 import type { Course, LessonSection } from '../types';
-import { gatherTopicMaterial } from './wikiContent';
 import { extractPdfText } from './pdfContent';
-import {
-  chunkText,
-  durationLabel,
-  estimateMinutes,
-  extractKeyPoints,
-  summarizeChunk,
-  wordCount,
-} from './textSummary';
 import { uid } from './storage';
+import { chunkText, durationLabel, wordCount } from './textSummary';
+import { buildListenScript, gatherTopicMaterial, researchToListenParts } from './wikiContent';
 
-function sectionFromText(title: string, text: string, index: number): LessonSection {
-  const summary = summarizeChunk(text, 6);
-  const keyPoints = extractKeyPoints(text, 4);
-  const minutes = estimateMinutes(summary + ' ' + text.slice(0, 1200));
-  const script = [
-    `Sección ${index}. ${title}.`,
-    summary,
-    keyPoints.length ? `Ideas clave: ${keyPoints.join(' ')}` : '',
-    'Pausa mental: ¿cómo aplicarías esto hoy en tu trabajo o ventas?',
-  ]
-    .filter(Boolean)
-    .join(' ');
-
+function sectionFromText(title: string, text: string, index: number, authorities: string[] = []): LessonSection {
+  const built = buildListenScript(title, text, index, authorities);
   return {
     id: uid(),
     title: `${index}. ${title}`,
-    durationLabel: durationLabel(Math.max(2, Math.min(minutes, 12))),
-    summary,
-    keyPoints: keyPoints.length ? keyPoints : [summary.slice(0, 140)],
-    practice: `Después de escuchar, explica en voz alta la idea principal de “${title}” en 30 segundos.`,
-    script,
+    durationLabel: built.durationLabel,
+    summary: built.summary,
+    keyPoints: built.keyPoints,
+    practice: `Después de escuchar, explica en voz alta la idea principal de “${title}” en 30 segundos y cita un referente si aplica.`,
+    script: built.script,
   };
 }
 
@@ -60,24 +42,17 @@ function finalizeCourse(input: {
 
 export async function buildCourseFromQuery(query: string): Promise<Course> {
   const material = await gatherTopicMaterial(query.trim());
-  const sections: LessonSection[] = [];
-  let index = 1;
+  const parts = researchToListenParts(material);
+  const sections = parts.map((part, i) =>
+    sectionFromText(part.title, part.text, i + 1, material.authorities),
+  );
 
-  for (const block of material.sections) {
-    const pieces = chunkText(block.text, 650);
-    for (let i = 0; i < pieces.length; i++) {
-      const title = pieces.length > 1 ? `${block.title} (${i + 1})` : block.title;
-      sections.push(sectionFromText(title, pieces[i], index));
-      index += 1;
-      if (sections.length >= 24) break;
-    }
-    if (sections.length >= 24) break;
-  }
+  const refs = material.authorities.slice(0, 5).join(' · ') || material.related.slice(0, 3).join(' · ');
 
   return finalizeCourse({
     title: material.title,
-    subtitle: `Basado en: ${query}`,
-    tag: 'Biblioteca',
+    subtitle: refs ? `Referentes: ${refs}` : `Basado en: ${query}`,
+    tag: 'Elite',
     description: material.sourceNote,
     sections,
   });
