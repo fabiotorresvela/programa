@@ -72,6 +72,7 @@ export function useSpeechRecognition() {
 export function useSpeechPlayback() {
   const [speaking, setSpeaking] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [error, setError] = useState('');
 
   const stop = () => {
     stopBackgroundSpeech();
@@ -80,9 +81,11 @@ export function useSpeechPlayback() {
   };
 
   const play = (text: string, title = 'Programa · Audio') => {
+    setError('');
     setSpeaking(true);
     setPaused(false);
-    void speakInBackground(text, {
+    // Llamada síncrona: iOS requiere speak() dentro del gesto del usuario.
+    speakInBackground(text, {
       title,
       onStart: () => {
         setSpeaking(true);
@@ -94,8 +97,8 @@ export function useSpeechPlayback() {
       },
       onPause: () => setPaused(true),
       onResume: () => setPaused(false),
-      onError: () => {
-        // continuar; el motor reintenta chunks
+      onError: (message) => {
+        if (message) setError(message);
       },
     });
   };
@@ -113,5 +116,5 @@ export function useSpeechPlayback() {
 
   useEffect(() => () => stopBackgroundSpeech(), []);
 
-  return { speaking, paused, play, stop, togglePause };
+  return { speaking, paused, play, stop, togglePause, error };
 }

@@ -17,7 +17,7 @@ export function AudioView() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState('');
   const pdfRef = useRef<HTMLInputElement>(null);
-  const { speaking, paused, play, stop, togglePause } = useSpeechPlayback();
+  const { speaking, paused, play, stop, togglePause, error: speechError } = useSpeechPlayback();
 
   useEffect(() => {
     setCustom(loadCustomCourses());
@@ -264,10 +264,13 @@ export function AudioView() {
             )}
           </div>
           <p className="muted" style={{ margin: '0.55rem 0 0', fontSize: '0.82rem' }}>
-            Segundo plano: toca Escuchar y luego puedes bloquear el teléfono. En control center /
-            pantalla de bloqueo usa pausa si aparece. En iPhone, deja la app abierta en segundo
-            plano (no la cierres del todo).
+            Sube el volumen del iPhone. Toca Escuchar y espera 1 segundo. Si no suena, toca otra vez.
           </p>
+          {speechError && (
+            <p className="muted" style={{ margin: '0.35rem 0 0', color: 'var(--danger)' }}>
+              {speechError}
+            </p>
+          )}
 
           <div className="chip-row">
             {course.sections.map((s) => (
