@@ -161,16 +161,17 @@ export async function gatherTopicMaterial(query: string): Promise<TopicResearch>
   if (!topic) throw new Error('Escribe un tema para investigar.');
 
   const queries = buildExpertQueries(topic);
-  const searchJobs = queries.flatMap((q) => [
+  type Hit = WikiSearchItem & { lang: 'es' | 'en'; q: string };
+  const searchJobs: Array<Promise<Hit[]>> = queries.flatMap((q) => [
     searchWikipedia(q, 'en', 6).then((rows) => rows.map((r) => ({ ...r, lang: 'en' as const, q }))),
     searchWikipedia(q, 'es', 5).then((rows) => rows.map((r) => ({ ...r, lang: 'es' as const, q }))),
   ]);
 
   const settled = await Promise.allSettled(searchJobs);
-  const merged = settled.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
+  const merged: Hit[] = settled.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
 
   // Deduplicar por título+idioma y quedarnos con los mejores.
-  const byKey = new Map<string, (typeof merged)[number]>();
+  const byKey = new Map<string, Hit>();
   for (const item of merged) {
     const key = `${item.lang}:${item.title.toLowerCase()}`;
     const prev = byKey.get(key);
