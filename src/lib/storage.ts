@@ -1,4 +1,4 @@
-import type { MoneyEntry, MoneyLedger } from '../types';
+import type { MoneyEntry, MoneyLedger, PaymentMethod } from '../types';
 
 const KEY = 'programa.finance.v1';
 
@@ -9,10 +9,21 @@ export type FinanceBackup = {
   entries: MoneyEntry[];
 };
 
+function normalizePaymentMethod(value: unknown): PaymentMethod | undefined {
+  if (value === 'efectivo' || value === 'transferencia') return value;
+  return undefined;
+}
+
 function normalizeEntry(entry: MoneyEntry): MoneyEntry {
+  const paymentMethod = normalizePaymentMethod(entry.paymentMethod);
   return {
     ...entry,
     ledger: entry.ledger === 'empresa' ? 'empresa' : 'personal',
+    ...(entry.kind === 'income'
+      ? { paymentMethod: paymentMethod ?? 'transferencia' }
+      : paymentMethod
+        ? { paymentMethod }
+        : {}),
   };
 }
 

@@ -711,6 +711,21 @@ a {
   }
 }
 
+.income-methods {
+  grid-template-columns: 1fr 1fr;
+}
+
+.field-label {
+  margin: 0 0 0.4rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.method-toggle {
+  grid-template-columns: 1fr 1fr;
+}
+
 .ledger-toggle {
   display: grid;
   grid-template-columns: 1fr 1fr;

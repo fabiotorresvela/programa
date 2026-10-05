@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { MoneyEntry, MoneyKind, MoneyLedger } from '../types';
+import type { MoneyEntry, MoneyKind, MoneyLedger, PaymentMethod } from '../types';
 import { loadEntries, makeBackup, parseBackup, saveEntries, uid } from '../lib/storage';
 
 export type DraftEntry = {
   kind: MoneyKind;
   ledger: MoneyLedger;
+  paymentMethod: PaymentMethod;
   amount: string;
   note: string;
   category: string;
@@ -16,6 +17,7 @@ export type DraftEntry = {
 const emptyDraft = (ledger: MoneyLedger = 'personal'): DraftEntry => ({
   kind: 'expense',
   ledger,
+  paymentMethod: 'transferencia',
   amount: '',
   note: '',
   category: 'General',
@@ -24,7 +26,14 @@ const emptyDraft = (ledger: MoneyLedger = 'personal'): DraftEntry => ({
 });
 
 function summarize(entries: MoneyEntry[]) {
-  const income = entries.filter((e) => e.kind === 'income').reduce((s, e) => s + e.amount, 0);
+  const incomes = entries.filter((e) => e.kind === 'income');
+  const income = incomes.reduce((s, e) => s + e.amount, 0);
+  const incomeTransfer = incomes
+    .filter((e) => (e.paymentMethod || 'transferencia') === 'transferencia')
+    .reduce((s, e) => s + e.amount, 0);
+  const incomeCash = incomes
+    .filter((e) => e.paymentMethod === 'efectivo')
+    .reduce((s, e) => s + e.amount, 0);
   const expenses = entries.filter((e) => e.kind === 'expense').reduce((s, e) => s + e.amount, 0);
   const loans = entries.filter((e) => e.kind === 'loan').reduce((s, e) => s + e.amount, 0);
   const byCategory = new Map<string, number>();
@@ -38,6 +47,8 @@ function summarize(entries: MoneyEntry[]) {
   }
   return {
     income,
+    incomeTransfer,
+    incomeCash,
     expenses,
     loans,
     balance: income - expenses,
@@ -65,15 +76,19 @@ export function parseVoiceMoney(text: string): Partial<DraftEntry> {
     ledger = 'personal';
   }
 
+  let paymentMethod: PaymentMethod | undefined;
+  if (/efectivo|cash|en mano|billete/.test(lower)) paymentMethod = 'efectivo';
+  else if (/transfer|nequi|daviplata|bancolombia|consign|deposito|depósito/.test(lower)) {
+    paymentMethod = 'transferencia';
+  }
+
   let category = 'General';
   if (/gasolina|uber|taxi|transporte|peaje/.test(lower)) category = 'Transporte';
   else if (/comida|almuerzo|cena|cafe|mercado/.test(lower)) category = 'Comida';
   else if (/arriendo|renta|servicios|luz|agua|internet/.test(lower)) category = 'Hogar';
   else if (/salario|sueldo|nomina|honorario/.test(lower)) category = 'Salario';
   else if (/cliente|venta|comision|proveedor|insumo|inventario/.test(lower)) category = 'Ventas';
-  else if (/nomina|emplead|proveedor|publicidad|publicidad|herramienta/.test(lower)) {
-    category = 'Operación';
-  }
+  else if (/nomina|emplead|proveedor|publicidad|herramienta/.test(lower)) category = 'Operación';
 
   let person = '';
   const personMatch = text.match(
@@ -84,6 +99,7 @@ export function parseVoiceMoney(text: string): Partial<DraftEntry> {
   return {
     kind,
     ...(ledger ? { ledger } : {}),
+    ...(paymentMethod ? { paymentMethod } : {}),
     amount,
     note: text.trim(),
     category,
@@ -116,6 +132,9 @@ export function useFinance() {
       id: uid(),
       kind: draft.kind,
       ledger: draft.ledger || ledger,
+      ...(draft.kind === 'income'
+        ? { paymentMethod: draft.paymentMethod || 'transferencia' }
+        : {}),
       amount,
       note: draft.note || draft.category,
       category: draft.category || 'General',
@@ -187,4 +206,8 @@ export function formatMoney(value: number) {
     currency: 'COP',
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+export function paymentMethodLabel(method?: PaymentMethod) {
+  return method === 'efectivo' ? 'Efectivo' : 'Transferencia';
 }

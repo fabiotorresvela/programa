@@ -24,10 +24,14 @@ export type MoneyKind = 'expense' | 'income' | 'loan';
 
 export type MoneyLedger = 'personal' | 'empresa';
 
+export type PaymentMethod = 'transferencia' | 'efectivo';
+
 export type MoneyEntry = {
   id: string;
   kind: MoneyKind;
   ledger: MoneyLedger;
+  /** Forma de pago del ingreso (transferencia o efectivo). */
+  paymentMethod?: PaymentMethod;
   amount: number;
   note: string;
   category: string;

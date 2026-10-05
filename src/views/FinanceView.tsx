@@ -9,7 +9,12 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react';
-import { formatMoney, parseVoiceMoney, useFinance } from '../hooks/useFinance';
+import {
+  formatMoney,
+  parseVoiceMoney,
+  paymentMethodLabel,
+  useFinance,
+} from '../hooks/useFinance';
 import { useSpeechRecognition } from '../hooks/useSpeech';
 import { saveTextAsFile } from '../lib/backupFiles';
 import { isNativeApp, pickReceiptPhoto } from '../lib/native';
@@ -187,7 +192,7 @@ export function FinanceView() {
         mezcla con la otra sección.
       </p>
 
-      <div className="kpi-grid" style={{ marginBottom: '1rem' }}>
+      <div className="kpi-grid" style={{ marginBottom: '0.75rem' }}>
         <div className="kpi income">
           <span>Ingresos</span>
           <strong>{formatMoney(summary.income)}</strong>
@@ -203,6 +208,17 @@ export function FinanceView() {
         <div className="kpi balance">
           <span>Resultado</span>
           <strong>{formatMoney(summary.balance)}</strong>
+        </div>
+      </div>
+
+      <div className="kpi-grid income-methods" style={{ marginBottom: '1rem' }}>
+        <div className="kpi income">
+          <span>Ingresos por transferencia</span>
+          <strong>{formatMoney(summary.incomeTransfer)}</strong>
+        </div>
+        <div className="kpi income">
+          <span>Ingresos en efectivo</span>
+          <strong>{formatMoney(summary.incomeCash)}</strong>
         </div>
       </div>
 
@@ -227,6 +243,26 @@ export function FinanceView() {
               </button>
             ))}
           </div>
+
+          {draft.kind === 'income' && (
+            <div>
+              <p className="field-label">¿Cómo entró el dinero?</p>
+              <div className="kind-toggle method-toggle">
+                <button
+                  className={draft.paymentMethod === 'transferencia' ? 'active' : ''}
+                  onClick={() => setDraft((d) => ({ ...d, paymentMethod: 'transferencia' }))}
+                >
+                  Transferencia
+                </button>
+                <button
+                  className={draft.paymentMethod === 'efectivo' ? 'active' : ''}
+                  onClick={() => setDraft((d) => ({ ...d, paymentMethod: 'efectivo' }))}
+                >
+                  Efectivo
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="controls">
             {supported ? (
@@ -392,7 +428,8 @@ export function FinanceView() {
                     <strong>{e.note}</strong>
                     <div className="meta">
                       {e.kind === 'expense' && 'Gasto'}
-                      {e.kind === 'income' && 'Ingreso'}
+                      {e.kind === 'income' &&
+                        `Ingreso · ${paymentMethodLabel(e.paymentMethod)}`}
                       {e.kind === 'loan' && `Préstamo a ${e.person}`}
                       {' · '}
                       {e.category}
