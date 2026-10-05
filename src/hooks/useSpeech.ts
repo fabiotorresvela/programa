@@ -1,4 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import {
+  isBackgroundSpeechPaused,
+  pauseBackgroundSpeech,
+  resumeBackgroundSpeech,
+  speakInBackground,
+  stopBackgroundSpeech,
+} from '../lib/backgroundSpeech';
 
 type SpeechRecognitionLike = {
   lang: string;
@@ -65,46 +72,46 @@ export function useSpeechRecognition() {
 export function useSpeechPlayback() {
   const [speaking, setSpeaking] = useState(false);
   const [paused, setPaused] = useState(false);
-  const utterRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const stop = () => {
-    window.speechSynthesis.cancel();
+    stopBackgroundSpeech();
     setSpeaking(false);
     setPaused(false);
-    utterRef.current = null;
   };
 
-  const play = (text: string) => {
-    stop();
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = 'es-ES';
-    utter.rate = 1;
-    utter.onend = () => {
-      setSpeaking(false);
-      setPaused(false);
-    };
-    utter.onerror = () => {
-      setSpeaking(false);
-      setPaused(false);
-    };
-    utterRef.current = utter;
+  const play = (text: string, title = 'Programa · Audio') => {
     setSpeaking(true);
     setPaused(false);
-    window.speechSynthesis.speak(utter);
+    void speakInBackground(text, {
+      title,
+      onStart: () => {
+        setSpeaking(true);
+        setPaused(false);
+      },
+      onEnd: () => {
+        setSpeaking(false);
+        setPaused(false);
+      },
+      onPause: () => setPaused(true),
+      onResume: () => setPaused(false),
+      onError: () => {
+        // continuar; el motor reintenta chunks
+      },
+    });
   };
 
   const togglePause = () => {
     if (!speaking) return;
-    if (window.speechSynthesis.paused) {
-      window.speechSynthesis.resume();
+    if (isBackgroundSpeechPaused()) {
+      resumeBackgroundSpeech();
       setPaused(false);
     } else {
-      window.speechSynthesis.pause();
+      pauseBackgroundSpeech();
       setPaused(true);
     }
   };
 
-  useEffect(() => () => window.speechSynthesis.cancel(), []);
+  useEffect(() => () => stopBackgroundSpeech(), []);
 
   return { speaking, paused, play, stop, togglePause };
 }

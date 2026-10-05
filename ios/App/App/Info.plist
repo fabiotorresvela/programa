@@ -66,6 +66,10 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Programa usa la cámara para fotografiar recibos de tus gastos.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

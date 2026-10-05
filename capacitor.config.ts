@@ -21,6 +21,13 @@ const config: CapacitorConfig = {
       resize: 'body',
     },
   },
+  android: {
+    allowMixedContent: true,
+  },
+  ios: {
+    // Audio en segundo plano se declara en Info.plist (UIBackgroundModes: audio)
+    contentInset: 'automatic',
+  },
 };
 
 export default config;

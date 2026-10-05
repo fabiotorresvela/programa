@@ -232,7 +232,10 @@ export function AudioView() {
 
           <div className="controls">
             {!speaking ? (
-              <button className="btn btn-primary" onClick={() => play(section.script)}>
+              <button
+                className="btn btn-primary"
+                onClick={() => play(section.script, `${course.title} · ${section.title}`)}
+              >
                 <Play size={18} />
                 Escuchar resumen
               </button>
@@ -253,13 +256,18 @@ export function AudioView() {
                 className="btn btn-ghost"
                 onClick={() => {
                   const full = course.sections.map((s) => s.script).join('\n\n');
-                  play(full);
+                  play(full, `${course.title} · completo`);
                 }}
               >
                 Escuchar todo
               </button>
             )}
           </div>
+          <p className="muted" style={{ margin: '0.55rem 0 0', fontSize: '0.82rem' }}>
+            Segundo plano: toca Escuchar y luego puedes bloquear el teléfono. En control center /
+            pantalla de bloqueo usa pausa si aparece. En iPhone, deja la app abierta en segundo
+            plano (no la cierres del todo).
+          </p>
 
           <div className="chip-row">
             {course.sections.map((s) => (
