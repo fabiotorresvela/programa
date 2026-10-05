@@ -49,3 +49,19 @@ Así queda con icono propio, pantalla completa y sin barra del navegador.
 
 - Micrófono: dictado de gastos y lectura de resúmenes.
 - Cámara / fotos: recibos en Finanzas (plugin Capacitor Camera en app nativa).
+
+## Cuentas (compartir con otra persona)
+
+Cada persona entra con **correo + contraseña**. Sus datos quedan en la nube (Supabase, plan gratis).
+
+1. Crea un proyecto en [supabase.com](https://supabase.com).
+2. En **SQL Editor**, pega y ejecuta `supabase/schema.sql`.
+3. En **Authentication → Providers → Email**, puedes desactivar “Confirm email” para entrar más rápido.
+4. Copia **Project URL** y **anon public key** (Settings → API).
+5. En GitHub → repo **programa** → Settings → Secrets → Actions, agrega:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+6. Sube cambios a `main` (el workflow publica la app con login).
+
+Comparte el enlace: https://fabiotorresvela.github.io/programa/  
+La otra persona toca **Crear cuenta**, elige su correo y contraseña, e instala la app en su iPhone.

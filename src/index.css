@@ -804,6 +804,29 @@ a {
   }
 }
 
+.login-screen {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+}
+
+.login-card {
+  width: min(440px, 100%);
+}
+
+.login-card h1 {
+  font-family: var(--font-display);
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.03em;
+}
+
+.login-screen code {
+  font-size: 0.85em;
+  color: var(--accent);
+}
+
 @media (max-width: 860px) {
   .grid-2,
   .kpi-grid {

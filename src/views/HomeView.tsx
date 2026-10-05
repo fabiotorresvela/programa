@@ -1,4 +1,6 @@
-import { Headphones, Smartphone, Wallet } from 'lucide-react';
+import { Headphones, Smartphone, UserCircle, Wallet } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { isCloudAuthEnabled } from '../lib/supabase';
 
 type Props = {
   onOpenAudio: () => void;
@@ -6,6 +8,8 @@ type Props = {
 };
 
 export function HomeView({ onOpenAudio, onOpenFinance }: Props) {
+  const { user } = useAuth();
+
   return (
     <section className="hero" aria-label="Inicio Programa">
       <div className="hero-media" aria-hidden />
@@ -30,6 +34,13 @@ export function HomeView({ onOpenAudio, onOpenFinance }: Props) {
           En el teléfono puedes instalarla como app (PWA) o generar el proyecto nativo Android / iOS
           con Capacitor.
         </p>
+        {isCloudAuthEnabled && user && (
+          <p className="install-hint">
+            <UserCircle size={16} />
+            Sesión: {user.email}. Comparte el enlace de Programa; cada persona crea su cuenta con
+            correo y contraseña.
+          </p>
+        )}
       </div>
     </section>
   );

@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FileUp, Loader2, Pause, Play, Search, Square, Trash2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useSpeechPlayback } from '../hooks/useSpeech';
 import { buildCourseFromPdf, buildCourseFromQuery } from '../lib/courseBuilder';
+import { pushLocalSnapshot } from '../lib/cloudSync';
 import { allCourses, loadCustomCourses, saveCustomCourses } from '../lib/courseStore';
 import type { Course } from '../types';
 
 export function AudioView() {
+  const { user, syncTick } = useAuth();
   const [custom, setCustom] = useState<Course[]>(() => loadCustomCourses());
   const catalog = useMemo(() => allCourses(custom), [custom]);
   const [courseId, setCourseId] = useState(catalog[0]?.id ?? '');
@@ -17,8 +20,20 @@ export function AudioView() {
   const { speaking, paused, play, stop, togglePause } = useSpeechPlayback();
 
   useEffect(() => {
+    setCustom(loadCustomCourses());
+  }, [syncTick]);
+
+  useEffect(() => {
     saveCustomCourses(custom);
   }, [custom]);
+
+  useEffect(() => {
+    if (!user) return;
+    const timer = window.setTimeout(() => {
+      void pushLocalSnapshot(user.id);
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [custom, user]);
 
   const course = useMemo(
     () => catalog.find((c) => c.id === courseId) ?? catalog[0],

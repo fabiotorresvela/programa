@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { MoneyEntry, MoneyKind, MoneyLedger, PaymentMethod } from '../types';
+import { useAuth } from '../context/AuthContext';
+import { pushLocalSnapshot } from '../lib/cloudSync';
 import { loadEntries, makeBackup, parseBackup, saveEntries, uid } from '../lib/storage';
 
 export type DraftEntry = {
@@ -108,13 +110,26 @@ export function parseVoiceMoney(text: string): Partial<DraftEntry> {
 }
 
 export function useFinance() {
+  const { user, syncTick } = useAuth();
   const [entries, setEntries] = useState<MoneyEntry[]>(() => loadEntries());
   const [ledger, setLedger] = useState<MoneyLedger>('personal');
   const [draft, setDraft] = useState<DraftEntry>(() => emptyDraft('personal'));
 
   useEffect(() => {
+    setEntries(loadEntries());
+  }, [syncTick]);
+
+  useEffect(() => {
     saveEntries(entries);
   }, [entries]);
+
+  useEffect(() => {
+    if (!user) return;
+    const timer = window.setTimeout(() => {
+      void pushLocalSnapshot(user.id);
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [entries, user]);
 
   useEffect(() => {
     setDraft((prev) => ({ ...prev, ledger }));

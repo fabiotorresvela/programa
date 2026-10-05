@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Headphones, Home, RefreshCw, Wallet } from 'lucide-react';
+import { Headphones, Home, LogOut, RefreshCw, Wallet } from 'lucide-react';
 import type { View } from './types';
+import { useAuth } from './context/AuthContext';
 import { HomeView } from './views/HomeView';
 import { AudioView } from './views/AudioView';
 import { FinanceView } from './views/FinanceView';
+import { LoginView } from './views/LoginView';
 import { refreshApp } from './lib/appRefresh';
 import { initNativeShell, platformLabel } from './lib/native';
 
@@ -23,7 +25,8 @@ function BrandMark() {
   );
 }
 
-export default function App() {
+function AppMain() {
+  const { enabled, user, signOut } = useAuth();
   const [view, setView] = useState<View>('home');
   const [platform, setPlatform] = useState('Web');
   const [refreshing, setRefreshing] = useState(false);
@@ -39,6 +42,8 @@ export default function App() {
     await refreshApp();
   };
 
+  const userLabel = user?.email?.split('@')[0] ?? '';
+
   return (
     <>
       <div className="app-shell">
@@ -47,7 +52,10 @@ export default function App() {
             <BrandMark />
             <div>
               <div className="brand-name">Programa</div>
-              <div className="brand-tag">Audio + finanzas · {platform}</div>
+              <div className="brand-tag">
+                Audio + finanzas · {platform}
+                {enabled && userLabel ? ` · ${userLabel}` : ''}
+              </div>
             </div>
           </button>
           <div className="topbar-actions">
@@ -60,6 +68,12 @@ export default function App() {
               <RefreshCw size={18} />
               <span>Actualizar</span>
             </button>
+            {enabled && user && (
+              <button className="refresh-btn" onClick={() => void signOut()} title="Cerrar sesión">
+                <LogOut size={18} />
+                <span>Salir</span>
+              </button>
+            )}
             <nav className="nav-pills desktop-nav" aria-label="Secciones">
               <button className={view === 'home' ? 'active' : ''} onClick={() => setView('home')}>
                 <Home size={15} style={{ marginRight: 4, verticalAlign: -2 }} />
@@ -105,4 +119,22 @@ export default function App() {
       </nav>
     </>
   );
+}
+
+export default function App() {
+  const { enabled, loading, user } = useAuth();
+
+  if (enabled && loading) {
+    return (
+      <div className="login-screen">
+        <p className="muted">Cargando sesión…</p>
+      </div>
+    );
+  }
+
+  if (enabled && !user) {
+    return <LoginView />;
+  }
+
+  return <AppMain />;
 }
