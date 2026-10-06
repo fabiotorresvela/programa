@@ -96,8 +96,10 @@ export function FinanceView() {
       }));
       setMessage(
         scanned.amount
-          ? `Valor detectado: ${formatMoney(Number(scanned.amount))}. Revísalo y guarda.`
-          : 'No pude leer el valor con claridad. Escríbelo a mano y guarda.',
+          ? `Total detectado: ${formatMoney(Number(scanned.amount))}${
+              scanned.matchedLine ? ` (${scanned.matchedLine.slice(0, 60)})` : ''
+            }. Revísalo y guarda.`
+          : 'No pude leer el total a pagar. Toma la foto más de cerca al TOTAL y vuelve a intentar, o escríbelo a mano.',
       );
     } catch {
       setMessage('No pude leer la factura. Escribe el monto a mano y guarda.');
