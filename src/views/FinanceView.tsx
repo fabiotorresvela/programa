@@ -3,6 +3,7 @@ import {
   Camera,
   Download,
   FolderOpen,
+  Loader2,
   Mic,
   MicOff,
   Plus,
@@ -17,6 +18,7 @@ import {
 } from '../hooks/useFinance';
 import { useSpeechRecognition } from '../hooks/useSpeech';
 import { saveTextAsFile } from '../lib/backupFiles';
+import { scanInvoiceImage } from '../lib/invoiceOcr';
 import { isNativeApp, pickReceiptPhoto } from '../lib/native';
 
 export function FinanceView() {
@@ -38,6 +40,8 @@ export function FinanceView() {
   const { listening, transcript, supported, start, stop, setTranscript } = useSpeechRecognition();
   const [message, setMessage] = useState('');
   const [backupText, setBackupText] = useState('');
+  const [scanning, setScanning] = useState(false);
+  const [scanPct, setScanPct] = useState(0);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
@@ -57,14 +61,50 @@ export function FinanceView() {
     }));
   }, [transcript, setDraft]);
 
-  const applyPhoto = (photoDataUrl: string, label = 'recibo') => {
+  const applyPhoto = async (photoDataUrl: string, label = 'recibo', runOcr = true) => {
     setDraft((prev) => ({
       ...prev,
       photoDataUrl,
       note: prev.note || `Gasto desde foto · ${label}`,
       kind: prev.kind === 'income' ? 'expense' : prev.kind,
     }));
-    setMessage('Foto cargada. Completa el monto y guarda.');
+
+    if (!runOcr || !photoDataUrl.startsWith('data:image')) {
+      setMessage(
+        photoDataUrl.startsWith('data:application/pdf')
+          ? 'PDF adjunto. Si puedes, sube una foto de la factura para leer el valor solo.'
+          : 'Archivo cargado. Completa el monto y guarda.',
+      );
+      return;
+    }
+
+    setScanning(true);
+    setScanPct(0);
+    setMessage('Leyendo la factura para sacar el valor…');
+    try {
+      const scanned = await scanInvoiceImage(photoDataUrl, setScanPct);
+      setDraft((prev) => ({
+        ...prev,
+        photoDataUrl,
+        kind: 'expense',
+        amount: scanned.amount || prev.amount,
+        note:
+          scanned.merchant
+            ? `Factura · ${scanned.merchant}`
+            : prev.note || `Gasto desde foto · ${label}`,
+        category: prev.category && prev.category !== 'General' ? prev.category : 'Factura',
+      }));
+      setMessage(
+        scanned.amount
+          ? `Valor detectado: ${formatMoney(Number(scanned.amount))}. Revísalo y guarda.`
+          : 'No pude leer el valor con claridad. Escríbelo a mano y guarda.',
+      );
+    } catch {
+      setMessage('No pude leer la factura. Escribe el monto a mano y guarda.');
+    } finally {
+      setScanning(false);
+      setScanPct(0);
+    }
   };
 
   const onPhoto = (file?: File | null) => {
@@ -72,9 +112,8 @@ export function FinanceView() {
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = String(reader.result || '');
-      // Guardamos imagen o PDF como adjunto; la vista previa solo aplica a imágenes.
       if (file.type.startsWith('image/') || file.type === 'application/pdf') {
-        applyPhoto(dataUrl, file.name);
+        void applyPhoto(dataUrl, file.name, file.type.startsWith('image/'));
       } else {
         setMessage('Usa una imagen o un PDF de la factura.');
       }
@@ -85,7 +124,7 @@ export function FinanceView() {
   const openCamera = async () => {
     if (isNativeApp()) {
       const dataUrl = await pickReceiptPhoto();
-      if (dataUrl) applyPhoto(dataUrl, 'cámara');
+      if (dataUrl) void applyPhoto(dataUrl, 'cámara', true);
       return;
     }
     cameraRef.current?.click();
@@ -276,11 +315,11 @@ export function FinanceView() {
             ) : (
               <span className="muted">Tu navegador no soporta dictado por voz.</span>
             )}
-            <button className="btn btn-ghost" onClick={() => void openCamera()}>
+            <button className="btn btn-ghost" disabled={scanning} onClick={() => void openCamera()}>
               <Camera size={18} />
               Tomar foto
             </button>
-            <button className="btn btn-ghost" onClick={openGalleryOrFiles}>
+            <button className="btn btn-ghost" disabled={scanning} onClick={openGalleryOrFiles}>
               <FolderOpen size={18} />
               Archivo o galería
             </button>
@@ -308,6 +347,12 @@ export function FinanceView() {
               {isEmpresa
                 ? '“Gasto de empresa 80000 en proveedor”'
                 : '“Gasté 25000 en gasolina personal”'}
+            </div>
+          )}
+          {scanning && (
+            <div className="voice-status">
+              <Loader2 size={16} className="spin" />
+              Leyendo factura… {scanPct}%
             </div>
           )}
           {transcript && <p className="muted">Detectado: “{transcript}”</p>}
